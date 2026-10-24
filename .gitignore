@@ -1,5 +1,4 @@
-@'
-# Python
+﻿# Python
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -27,4 +26,3 @@ media/
 .idea/
 .DS_Store
 Thumbs.db
-'@ | Set-Content -Encoding utf8 .gitignore

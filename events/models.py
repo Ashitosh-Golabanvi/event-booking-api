@@ -4,6 +4,9 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
+import secrets
+import string
+
 
 class Event(models.Model):
 
@@ -71,3 +74,76 @@ class Event(models.Model):
 
     def __str__(self):
         return self.title
+
+
+
+class Booking(models.Model):
+
+    class Status(models.TextChoices):
+        CONFIRMED = "confirmed", "Confirmed"
+        CANCELLED = "cancelled", "Cancelled"
+
+    event = models.ForeignKey(
+        Event,
+        on_delete=models.PROTECT,
+        related_name="bookings",
+    )
+
+    attendee = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="event_bookings",
+    )
+
+    booking_reference = models.CharField(
+        max_length=11,
+        unique=True,
+        editable=False,
+    )
+
+    seats = models.PositiveSmallIntegerField()
+
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.CONFIRMED,
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(seats__gte=1)
+                    & models.Q(seats__lte=5)
+                ),
+                name="booking_seats_between_1_and_5",
+            ),
+            models.UniqueConstraint(
+                fields=["event", "attendee"],
+                condition=models.Q(status="confirmed"),
+                name="unique_confirmed_event_booking",
+            ),
+        ]
+
+    def save(self, *args, **kwargs):
+        if not self.booking_reference:
+            alphabet = string.ascii_uppercase + string.digits
+
+            while True:
+                code = "BK-" + "".join(
+                    secrets.choice(alphabet) for _ in range(8)
+                )
+
+                if not Booking.objects.filter(
+                    booking_reference=code
+                ).exists():
+                    self.booking_reference = code
+                    break
+
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.booking_reference
