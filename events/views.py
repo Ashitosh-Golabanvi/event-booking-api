@@ -26,7 +26,7 @@ from django.utils.dateparse import parse_date
 from rest_framework.exceptions import ValidationError
 from django.db.models import Count
 from .organizer_serializers import OrganizerBookingSerializer
-
+from drf_spectacular.utils import extend_schema
 
 def event_queryset():
     return Event.objects.annotate(
@@ -199,7 +199,7 @@ class EventDetailView(generics.RetrieveAPIView):
 
 class BookingListCreateView(APIView):
     permission_classes = [IsAuthenticated]
-
+    @extend_schema(responses=BookingSerializer(many=True))
     def get(self, request):
         bookings = Booking.objects.filter(
             attendee=request.user
@@ -208,6 +208,9 @@ class BookingListCreateView(APIView):
         serializer = BookingSerializer(bookings, many=True)
         return Response(serializer.data)
 
+    @extend_schema(
+    request=BookingCreateSerializer,
+    responses={201: BookingSerializer, 400: dict, 403: dict},)
     def post(self, request):
         if (
             request.user.is_superuser
@@ -289,7 +292,9 @@ class BookingListCreateView(APIView):
 
 class BookingCancelView(APIView):
     permission_classes = [IsAuthenticated]
-
+    @extend_schema(
+    request=None,
+    responses={200: dict, 400: dict, 404: dict},)
     def post(self, request, booking_reference):
         with transaction.atomic():
             booking = get_object_or_404(
@@ -394,6 +399,9 @@ class EventManageDetailView(generics.GenericAPIView):
 
 class EventPublishView(APIView):
     permission_classes = [IsAuthenticated, IsOrganizer]
+    @extend_schema(
+    request=None,
+    responses={200: EventSerializer, 400: dict, 403: dict, 404: dict},)
 
     def post(self, request, pk):
         with transaction.atomic():
@@ -453,6 +461,9 @@ class EventPublishView(APIView):
 
 class EventCancelView(APIView):
     permission_classes = [IsAuthenticated, IsOrganizer]
+    @extend_schema(
+    request=None,
+    responses={200: dict, 400: dict, 403: dict, 404: dict},)
 
     def post(self, request, pk):
         with transaction.atomic():
@@ -495,6 +506,7 @@ class EventCancelView(APIView):
 
 class OrganizerDashboardView(APIView):
     permission_classes = [IsAuthenticated, IsOrganizer]
+    @extend_schema(responses={200: dict})
 
     def get(self, request):
         events = Event.objects.filter(organizer=request.user)

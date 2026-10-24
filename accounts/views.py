@@ -6,9 +6,16 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from .serializers import RegisterSerializer, LoginSerializer
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
+from drf_spectacular.utils import extend_schema
+from rest_framework import serializers
 
 class RegisterView(APIView):
     permission_classes = [permissions.AllowAny]
+
+    @extend_schema(
+    request=RegisterSerializer,
+    responses={201: dict, 400: dict},
+)
 
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
@@ -37,6 +44,11 @@ class RegisterView(APIView):
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
 
+    @extend_schema(
+    request=LoginSerializer,
+    responses={200: dict, 401: dict},
+)
+
     def post(self, request):
         serializer = LoginSerializer(
             data=request.data,
@@ -62,9 +74,16 @@ class LoginView(APIView):
             status=status.HTTP_401_UNAUTHORIZED,
         )
 
+class TokenRefreshRequestSerializer(serializers.Serializer):
+    refresh = serializers.CharField()
 
 class TokenRefreshView(APIView):
     permission_classes = [permissions.AllowAny]
+
+    @extend_schema(
+    request=TokenRefreshRequestSerializer,
+    responses={200: dict, 400: dict, 401: dict},
+)
 
     def post(self, request):
         refresh_token = request.data.get("refresh")
