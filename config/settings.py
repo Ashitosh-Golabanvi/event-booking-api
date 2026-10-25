@@ -69,6 +69,7 @@ SPECTACULAR_SETTINGS = {
     "TITLE": "Event Booking API",
     "DESCRIPTION": "API for managing events and event bookings.",
     "VERSION": "1.0.0",
+    "REDOC_DIST": "https://cdn.jsdelivr.net/npm/redoc@2",
 }
 
 
@@ -77,7 +78,7 @@ SPECTACULAR_SETTINGS = {
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        "DIRS": [BASE_DIR / "templates"],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
