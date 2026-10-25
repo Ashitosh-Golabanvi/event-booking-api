@@ -1,5 +1,7 @@
 # Event Booking API
 
+[![Django CI](https://github.com/Ashitosh-Golabanvi/event-booking-api/actions/workflows/ci.yml/badge.svg)](https://github.com/Ashitosh-Golabanvi/event-booking-api/actions/workflows/ci.yml)
+
 A RESTful event booking system built with Django REST Framework and PostgreSQL. It supports organizer-managed events, attendee bookings, booking cancellation, JWT authentication, and organizer sales dashboards.
 
 ## Features
@@ -21,6 +23,7 @@ A RESTful event booking system built with Django REST Framework and PostgreSQL. 
 - Django Admin for managing users, events, and bookings.
 - Swagger UI, ReDoc, and OpenAPI schema.
 - Automated tests and repeatable demo-data seeding.
+- GitHub Actions CI for automated configuration, migration, and test checks.
 
 ## Tech Stack
 
@@ -31,6 +34,7 @@ A RESTful event booking system built with Django REST Framework and PostgreSQL. 
 - Simple JWT
 - drf-spectacular
 - Docker and Docker Compose
+- GitHub Actions
 
 ## Prerequisites
 
@@ -49,7 +53,7 @@ cd event-booking-api
 
 ### 2. Configure environment variables
 
-Create your local environment file:
+Create your local environment file.
 
 **Windows PowerShell**
 
@@ -83,10 +87,10 @@ docker compose logs web
 
 ### 4. Open the application
 
-- Swagger UI: http://127.0.0.1:8000/api/docs/
-- ReDoc: http://127.0.0.1:8000/api/redoc/
-- OpenAPI schema: http://127.0.0.1:8000/api/schema/
-- Django Admin: http://127.0.0.1:8000/admin/
+- **Swagger UI:** [http://127.0.0.1:8000/api/docs/](http://127.0.0.1:8000/api/docs/)
+- **ReDoc:** [http://127.0.0.1:8000/api/redoc/](http://127.0.0.1:8000/api/redoc/)
+- **OpenAPI schema:** [http://127.0.0.1:8000/api/schema/](http://127.0.0.1:8000/api/schema/)
+- **Django Admin:** [http://127.0.0.1:8000/admin/](http://127.0.0.1:8000/admin/)
 
 ### 5. Create an admin account
 
@@ -106,7 +110,7 @@ The seed command creates or reuses demo users, events, and bookings. It can be r
 
 The command may reuse existing users when their email addresses match. Consequently, the usernames and passwords of reused accounts may differ from the newly created demo-account defaults. Check the command output before logging in.
 
-The password `DemoPass123!` is used for users created by the seed command; it does not reset passwords on reused users.
+The password `DemoPass123!` is used for users created by the seed command; it does not reset passwords on reused users. Demo credentials are intended for local testing only.
 
 ### 7. Run tests in Docker
 
@@ -176,15 +180,35 @@ python manage.py migrate
 python manage.py runserver
 ```
 
-The API is available at http://127.0.0.1:8000/.
+The API is available at [http://127.0.0.1:8000/](http://127.0.0.1:8000/).
+
+### 8. Run tests and configuration checks
+
+Open a separate terminal from the project directory, activate the virtual environment, and run the test suite:
+
+```bash
+python manage.py test
+```
+
+Check Django configuration:
+
+```bash
+python manage.py check
+```
+
+Check whether model changes require new migrations:
+
+```bash
+python manage.py makemigrations --check --dry-run
+```
 
 ## API Documentation
 
 Swagger UI and ReDoc provide interactive API documentation, including endpoint paths, HTTP methods, request schemas, and response formats.
 
-- Swagger UI: `/api/docs/`
-- ReDoc: `/api/redoc/`
-- OpenAPI schema: `/api/schema/`
+- **Swagger UI:** `/api/docs/`
+- **ReDoc:** `/api/redoc/`
+- **OpenAPI schema:** `/api/schema/`
 
 ## Main API Endpoint Groups
 
@@ -213,11 +237,11 @@ Events follow the lifecycle:
 
 ## Booking and Concurrency
 
-The booking flow uses database transactions and row-level locking when checking and updating event seat availability. This helps serialize concurrent booking attempts for the same event so that requests cannot all rely on the same stale seat count.
+The booking flow uses PostgreSQL database transactions and row-level locking when checking and updating event seat availability. This helps serialize concurrent booking attempts for the same event and prevents requests from independently relying on the same stale seat count.
 
 A database constraint also prevents multiple confirmed bookings for the same attendee and event. Booking references are generated separately from database IDs.
 
-These guarantees depend on running against PostgreSQL with the relevant constraints and transaction behavior in place. The included automated tests cover the implemented booking and event rules.
+These guarantees rely on booking operations using the same PostgreSQL database and the implemented transaction, locking, and constraint strategy. The application must correctly acquire the relevant locks and perform seat validation and booking updates within the transaction. The included automated tests cover the implemented booking and event rules.
 
 ## Organizer Dashboard
 
@@ -247,6 +271,12 @@ Additional useful checks:
 python manage.py check
 python manage.py makemigrations --check --dry-run
 ```
+
+The GitHub Actions workflow runs automatically on pushes to `main` and pull requests targeting `main`. It checks Django configuration, verifies migration consistency, and runs the automated test suite.
+
+You can view the workflow and its results here:
+
+[GitHub Actions — Django CI](https://github.com/Ashitosh-Golabanvi/event-booking-api/actions)
 
 ## Demo Data
 
@@ -281,6 +311,9 @@ event-booking-api/
 ├── docker-compose.yml
 ├── .dockerignore
 ├── .env.example
+├── .github/
+│   └── workflows/
+│       └── ci.yml
 └── README.md
 ```
 
@@ -290,6 +323,7 @@ event-booking-api/
 - The included Docker configuration runs Django's development server; production deployment should use a production-grade WSGI or ASGI server and appropriate security settings.
 - Demo accounts are for local testing only. Change or replace demo credentials before any shared or production deployment.
 - Booking cancellation follows the implemented 24-hour cutoff.
+- Concurrency protection depends on the implemented PostgreSQL transaction, locking, and constraint strategy.
 - API behavior and validation rules are documented in the generated API schema and covered by the automated test suite.
 
 ## License
