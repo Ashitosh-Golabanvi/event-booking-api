@@ -39,8 +39,8 @@ A RESTful event booking system built with Django REST Framework and PostgreSQL. 
 ## Prerequisites
 
 - Git
-- Python 3.12 or newer, for local development
-- Docker Desktop, for containerized setup
+- Python 3.12 or newer for local development
+- Docker Desktop for containerized setup
 
 ## Setup Option 1: Docker Compose (Recommended)
 
@@ -106,9 +106,9 @@ Follow the prompts to create the account.
 docker compose exec web python manage.py seed_demo
 ```
 
-The seed command creates or reuses demo users, events, and bookings. It can be run repeatedly without duplicating the existing demo records.
+The seed command creates or reuses demo users, events, and bookings. It can be run repeatedly without duplicating existing demo records.
 
-The command may reuse existing users when their email addresses match. Consequently, the usernames and passwords of reused accounts may differ from the newly created demo-account defaults. Check the command output before logging in.
+The command may reuse existing users when their email addresses match. Consequently, usernames and passwords of reused accounts may differ from newly created demo-account defaults. Check the command output before logging in.
 
 The password `DemoPass123!` is used for users created by the seed command; it does not reset passwords on reused users. Demo credentials are intended for local testing only.
 
@@ -160,7 +160,7 @@ Configure the Django settings and PostgreSQL credentials in `.env`.
 
 ### 5. Start PostgreSQL
 
-You can start the database service with:
+Start the database service:
 
 ```bash
 docker compose up -d db
@@ -184,7 +184,7 @@ The API is available at [http://127.0.0.1:8000/](http://127.0.0.1:8000/).
 
 ### 8. Run tests and configuration checks
 
-Open a separate terminal from the project directory, activate the virtual environment, and run the test suite:
+Run the test suite:
 
 ```bash
 python manage.py test
@@ -235,13 +235,47 @@ Events follow the lifecycle:
 - Public event browsing is available without authentication; protected operations require authentication.
 - Attendees can manage their own bookings, subject to booking rules.
 
+## Key Design Decisions and Trade-offs
+
+### PostgreSQL and transactions
+
+PostgreSQL is used for persistent storage and transactional booking operations. Database transactions and row-level locking help coordinate concurrent booking requests.
+
+**Trade-off:** Locking introduces some contention when many users try to book the same event simultaneously, but it helps protect seat availability from conflicting updates.
+
+### Preventing overselling
+
+The booking flow locks the relevant event record while checking seat availability and processing the booking within a database transaction. Concurrent booking attempts for the same event must coordinate through that lock before making their seat-allocation decisions.
+
+A database constraint also prevents multiple confirmed bookings for the same attendee and event.
+
+**Trade-off:** These guarantees depend on all relevant booking operations following the transaction and locking strategy, and on PostgreSQL enforcing the database constraints. The locking and seat-validation implementation must remain consistent for overselling to be prevented.
+
+### Role-based access
+
+Organizer and attendee roles separate event-management permissions from booking permissions. Organizers manage their own events, while attendees manage their own bookings.
+
+**Trade-off:** Permission checks must be maintained across every protected endpoint as the API evolves.
+
+### Database aggregation
+
+The organizer dashboard uses database aggregation for booking and revenue summaries instead of loading every booking into Python.
+
+**Trade-off:** Aggregations reduce application-side processing, while appropriate database indexes and query design remain important as the dataset grows.
+
+### API documentation and automated checks
+
+drf-spectacular generates the OpenAPI schema and provides Swagger UI and ReDoc. GitHub Actions checks Django configuration, migration consistency, and automated tests on pushes to `main` and pull requests targeting `main`.
+
+**Trade-off:** Automated tests help detect regressions but cannot prove every production scenario, especially all possible concurrency conditions.
+
 ## Booking and Concurrency
 
 The booking flow uses PostgreSQL database transactions and row-level locking when checking and updating event seat availability. This helps serialize concurrent booking attempts for the same event and prevents requests from independently relying on the same stale seat count.
 
 A database constraint also prevents multiple confirmed bookings for the same attendee and event. Booking references are generated separately from database IDs.
 
-These guarantees rely on booking operations using the same PostgreSQL database and the implemented transaction, locking, and constraint strategy. The application must correctly acquire the relevant locks and perform seat validation and booking updates within the transaction. The included automated tests cover the implemented booking and event rules.
+These guarantees rely on booking operations using the same PostgreSQL database and the implemented transaction, locking, and constraint strategy. The included automated tests cover the implemented booking and event rules.
 
 ## Organizer Dashboard
 
@@ -263,7 +297,7 @@ Or inside Docker:
 docker compose exec web python manage.py test
 ```
 
-The current test suite contains 19 tests, all of which passed in the verified Docker environment.
+The current test suite contains 19 tests, all of which passed in the previously verified Docker environment.
 
 Additional useful checks:
 
@@ -274,9 +308,7 @@ python manage.py makemigrations --check --dry-run
 
 The GitHub Actions workflow runs automatically on pushes to `main` and pull requests targeting `main`. It checks Django configuration, verifies migration consistency, and runs the automated test suite.
 
-You can view the workflow and its results here:
-
-[GitHub Actions — Django CI](https://github.com/Ashitosh-Golabanvi/event-booking-api/actions)
+[View GitHub Actions — Django CI](https://github.com/Ashitosh-Golabanvi/event-booking-api/actions)
 
 ## Demo Data
 
@@ -324,6 +356,7 @@ event-booking-api/
 - Demo accounts are for local testing only. Change or replace demo credentials before any shared or production deployment.
 - Booking cancellation follows the implemented 24-hour cutoff.
 - Concurrency protection depends on the implemented PostgreSQL transaction, locking, and constraint strategy.
+- The current test suite contains 19 tests; passing tests do not guarantee that every possible production or concurrency scenario has been tested.
 - API behavior and validation rules are documented in the generated API schema and covered by the automated test suite.
 
 ## License
